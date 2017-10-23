@@ -181,6 +181,9 @@ class OpenvasObject(object):
 
     def command(self, name, details=None):
         """ Comment here """
+        if self.conn is None:
+            raise Exception('There is no connection made yet, did you connect')
+            
         details = details if details is not None else {}
         return self.conn.command(name, details)
 
