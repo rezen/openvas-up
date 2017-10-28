@@ -27,7 +27,7 @@ class Target(OpenvasObject):
 
 
 class Asset(OpenvasObject):
-    """ Assets are added by scans generally and are tracked as a host and/or os """ 
+    """ Assets are added by scans generally and are tracked as a host and/or os """
     name = field.Text().required()
     type = field.Text().required()
     comment = field.Text()
@@ -76,4 +76,3 @@ class PortRange(OpenvasObject):
     port_list = field.Object(PortList)
     start = field.Integer()
     end = field.Integer()
-

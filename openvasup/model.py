@@ -1,4 +1,5 @@
 """ Base model """
+from __future__ import print_function
 from xml.etree import ElementTree as etree
 from xml.etree.ElementTree import Element
 import field
@@ -47,7 +48,7 @@ class OpenvasObject(object):
             if isinstance(value, field.Field):
                 value.name = key
                 value.add_to_class(cls, key)
-   
+
         obj = super(OpenvasObject, cls).__new__(cls)
         obj._from_base_class = type(obj) == OpenvasObject
         obj.required = getattr(cls, 'required', [])
@@ -85,11 +86,11 @@ class OpenvasObject(object):
         elements = {k: oxml.knode(k, v) if k[0] != '@' else v for k, v in data.items() if v != None}
 
         if self.id is not None:
-            elements['@%s_id' % self.entity] =  self.id
+            elements['@%s_id' % self.entity] = self.id
         return elements
-    
+
     def get_attr(self, attr):
-        """ Get the model attribute """ 
+        """ Get the model attribute """
         return self._data.get(attr)
 
     @property
@@ -103,7 +104,7 @@ class OpenvasObject(object):
         instance = cls(data, cls.conn)
         for attr, value in data.items():
             setattr(instance, attr, value)
-        
+
         instance._dirty = set()
         return instance
 
@@ -111,15 +112,15 @@ class OpenvasObject(object):
     def get(cls, query=None):
         """ Get instances of the model with a query """
         query = query if query is not None else cls.default_filter
-        entity = to_entity(cls) 
+        entity = to_entity(cls)
         request = cls.conn.command('get_%ss' % entity, query)
-        
+
         if hasattr(cls, 'from_xml'):
             entities = request.response_xml.findall(entity)
             return [cls.from_xml(e) for e in entities]
-    
+
         return [cls.from_dict(t) for t in request.get_response_data()]
-    
+
     @classmethod
     def get_by_id(cls, entity_id):
         """ Get a new instance of an entity by a specific uuid """
@@ -128,7 +129,7 @@ class OpenvasObject(object):
 
     def to_dict(self, is_child=False):
         """ Convert model to dict, usually used for copying """
-        if is_child == True:
+        if is_child:
             return {'@id':self.id}
 
         if len(self.field_names) != 0:
@@ -138,20 +139,20 @@ class OpenvasObject(object):
             data = self._data
 
         if self.id is not None:
-            data['@%s_id' % self.entity ] = self.id
-        
+            data['@%s_id' % self.entity] = self.id
+
         return data
-    
+
     def changed_attrs(self):
         """ Get the names of the attributes that have changed  """
         fields = [(name, getattr(self, name)) for name in self.field_names]
-        fields = set([k for (k, f) in fields if f is not None and hasattr(f, 'changed') and f.changed == True])
+        fields = set([k for (k, f) in fields if f != None and hasattr(f, 'changed') and f.changed])
         return fields.union(self._dirty)
 
     def has_changed(self):
         """ Check if the model has had any attribute changes """
         return len(self.changed_attrs()) != 0
-    
+
     def save(self, **kwargs):
         """ Save the model, creating if it doesn't existing, modifying if it already does """
         if self.readonly:
@@ -161,23 +162,23 @@ class OpenvasObject(object):
             return self._modify(options)
 
         return self._create(options)
-    
+
     def delete(self, ultimate=False):
         """ Delete the model, by default putting into trash, not permanent """
         return self.command('delete_' + to_entity(self), {
             '@%s_id' %  to_entity(self): self.id,
             '@ultimate': ultimate,
         })
-    
+
     def copy(self):
         """ Create a new copy of the model's data """
         id_attr = '@' + to_entity(self) + 'id'
-        data =  self.to_dict().copy()
+        data = self.to_dict().copy()
         cls = type(self)
 
         if 'copy' in self.field_names:
             pass
-    
+
         if id_attr in data:
             del data[id_attr]
 
@@ -196,7 +197,7 @@ class OpenvasObject(object):
         """ Run a command against omp """
         if self.conn is None:
             raise Exception('There is no connection made yet, did you connect')
-            
+
         details = details if details is not None else {}
         return self.conn.command(name, details)
 
@@ -216,14 +217,17 @@ class OpenvasObject(object):
         if not isinstance(payload, dict):
             print('FIXME')
             exit(4)
-    
+
         dirty = self.changed_attrs()
         payload = self._command_dict_xml(command, payload, dirty.union(set(editable)))
-        response = self.command(command, payload)
+        request = self.command(command, payload)
 
+        if not request.was_successful():
+            raise Exception(request.status_text())
+ 
     def _create(self, options):
         if hasattr(self, 'create') and callable(self.create):
-            return self.create()
+            return self.create(options)
 
         command = 'create_%s' % to_entity(self)
         payload = self.to_xml()
@@ -239,26 +243,23 @@ class OpenvasObject(object):
         if request.was_successful():
             self._data['@id'] = request.get_id()
 
-    
+
     def _command_dict_xml(self, command, data, attrs=None):
         xml = etree.Element(command)
-        for key, el in data.items():
-            if isinstance(el, tuple):
-                attr, value = el
+        for key, elem in data.items():
+            if isinstance(elem, tuple):
+                attr, value = elem
                 xml.attrib[attr] = value
-            elif isinstance(el, etree.Element):
+            elif isinstance(elem, etree.Element):
                 if attrs is None:
-                    xml.append(el)   
+                    xml.append(elem)
                 elif key in attrs:
-                    xml.append(el)        
+                    xml.append(elem)
             elif key[0] == '@':
-                xml.attrib[key[1:]] = el
+                xml.attrib[key[1:]] = elem
             else:
                 pass
         return xml
 
     def __repr__(self):
         return "%s [id=%s name=%s]" % (self.__class__, self.id, self.name)
-
-
-

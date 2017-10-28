@@ -64,11 +64,11 @@ class Request:
     def get_response_data(self):
         """ Get the data from the response """
         data = self.response_to_dict()
-        d = data.get(self.resource, data)
-        if d is None:
+        resource = data.get(self.resource, data)
+        if resource is None:
             return []
         else:
-            return d
+            return resource
 
     def get_status_text(self):
         """ Get the status text returned from omp response """
@@ -133,7 +133,7 @@ class OmpConnection:
                 'password':password
             }
         })
-  
+
         if not request.was_successful():
             raise AuthFailedError(request.get_status_text())
 
@@ -219,4 +219,3 @@ class OmpConnection:
             raise ResultError('Command failed [' + name + '] ' + request.get_status_text())
 
         return request
-
