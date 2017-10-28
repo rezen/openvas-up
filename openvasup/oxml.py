@@ -7,7 +7,6 @@ def knode(key, value):
     if isinstance(value, etree.Element):
         return value
 
-    
     if isinstance(value, str):
         node = etree.Element(key)
         node.text = value
@@ -34,7 +33,7 @@ def dict_to_xml(name, data):
 
     if hasattr(data, 'to_xml'):
         return data.to_xml()
-    
+
     attrs = {}
     kids = []
     for key in data:

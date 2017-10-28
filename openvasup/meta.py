@@ -5,6 +5,7 @@ from secinfo import Nvt
 
 
 class Tag(OpenvasObject):
+    """ Tag entities with extra data """
     name = field.Text()
     comment = field.Text()
     value = field.Text()
@@ -13,6 +14,7 @@ class Tag(OpenvasObject):
 
     @staticmethod
     def attach(obj):
+        """ Add tag to an object """
         tag = Tag({'@id': None})
         tag.resource = {
             '@id': obj.id,
@@ -21,6 +23,7 @@ class Tag(OpenvasObject):
         return tag
 
 class Note(OpenvasObject):
+    """ Notes are associated with specific NVTs and generally scan results """
     text = field.Text().required()
     hosts = field.Text()
     category = field.Text()

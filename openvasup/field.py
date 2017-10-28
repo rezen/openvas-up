@@ -1,5 +1,4 @@
 """ Fields for creating openvas object schemeas """
-
 from xml.etree.ElementTree import Element
 from xml.etree import ElementTree 
 
@@ -38,6 +37,7 @@ class FieldDescriptor(object):
 class Field(object):
 
     def add_to_class(self, cls, name):
+        """ Adds field descriptor to OpenvasObject classes """
         cls.fields.append(self)
         cls.field_names.append(name)
 
@@ -54,7 +54,6 @@ class Field(object):
 
 
     def __init__(self, model=None, **kwargs):
-        """ @todo """
         self.dtype = model
         self.editable = kwargs.get('editable', True)
         self.is_required = kwargs.get('is_required', False)
@@ -63,6 +62,7 @@ class Field(object):
 
 
     def required(self):
+        """ Set the field to required """
         self.is_required = True
         return self
 

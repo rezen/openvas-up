@@ -5,7 +5,8 @@ from scan import Task
 from meta import Tag
 
 class ScanWizard(object):
-  
+  """ Creates a wizard for quickly starting up a scan task """
+
   def __init__(self, options={}):
     self.options = options if options is not None else {}
     self.host = None
@@ -13,6 +14,7 @@ class ScanWizard(object):
     self.messages = []
 
   def start(self, options):
+    """ Starts task creation process and validates options """
     self.host = options.get('host')
     self.config = options.get('config', 'Full and fast')
 

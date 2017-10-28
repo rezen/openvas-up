@@ -57,10 +57,12 @@ class Request:
         self._dict = None
 
     def set_response(self, (xml, body)):
+        """ Set the response attributes """
         self.response_body = body
         self.response_xml = xml
 
     def get_response_data(self):
+        """ Get the data from the response """
         data = self.response_to_dict()
         d = data.get(self.resource, data)
         if d is None:
@@ -69,24 +71,30 @@ class Request:
             return d
 
     def get_status_text(self):
+        """ Get the status text returned from omp response """
         return self.response_xml.attrib['status_text']
 
     def get_status_code(self):
+        """ Get the status code returned from omp response """
         return int(self.response_xml.attrib['status'])
 
     def command_parts(self, command):
+        """ Get the method and resource from the command """
         parts = command.split("_")
         method = parts[0]
         resource = '_'.join(parts[1:])
         return method, resource
-    
+
     def get_id(self):
+        """ Get the id in the response """
         return self.response_xml.attrib['id']
 
     def was_successful(self):
+        """ Returns whether or not the request succeeded """
         return self.get_status_code() < 300
 
     def response_to_dict(self):
+        """ Conver the response to a dict """
         if self._dict is None:
             self._dict = oxml.xml_to_dict(self.response_xml, self.resource)
         return self._dict
@@ -103,12 +111,14 @@ class OmpConnection:
         self._is_authed = False
 
     def open(self, username=None, password=None):
+        """ Opens up with connection with omp """
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket = sock = ssl.wrap_socket(sock,do_handshake_on_connect=False)
+        self.socket = sock = ssl.wrap_socket(sock, do_handshake_on_connect=False)
         sock.connect((self.host, self.port))
         self.authenticate(username, password)
 
     def authenticate(self, username=None, password=None):
+        """ Sends authenticate command to omp """
         if self._is_authed and username is None:
             return
 
@@ -130,11 +140,13 @@ class OmpConnection:
         self._is_authed = True
 
     def close(self):
+        """ Close the connection out """
         self.socket.close()
         self.socket = None
         self._is_authed = False
 
     def send_xml(self, data):
+        """ Send xml data """
         if not etree.iselement(data):
             raise ClientError('Not xml ...')
 
@@ -145,6 +157,7 @@ class OmpConnection:
     def send_dict(self, data): pass
 
     def send_text(self, data):
+        """ Send raw text to connection """
         if not isinstance(data, unicode):
             raise ClientError('Not text ...')
 
@@ -166,6 +179,7 @@ class OmpConnection:
         return (root, body)
 
     def send(self, data):
+        """ Send data to connection """
         if isinstance(data, unicode):
             return self.send_text(data)
         elif isinstance(data, dict):
@@ -174,17 +188,20 @@ class OmpConnection:
             return self.send_xml(data)
     
     def command_dict(self, name, data):
+        """ Send a command name with params stored in dict """
         request = Request(name, data)
         xmld = oxml.dict_to_xml(name, data)
         request.set_response(self.send_xml(xmld))
         return request
 
     def command_xml(self, name, data):
+        """ Send a command name with request xml built """
         request = Request(name, data)
         request.set_response(self.send_xml(data))
         return request
     
     def help(self):
+        """ Get help info from omp """
         request = self.command('help', {})
         if request.was_successful():
             return request.response_xml.text

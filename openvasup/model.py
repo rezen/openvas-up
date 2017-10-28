@@ -7,7 +7,11 @@ from util import ObservableDict, to_entity
 from omp import OmpConnection
 
 class OpenvasObject(object):
-    """ @todo """
+    """
+    OpenvasObject is the base model openvas entities extend
+    to create their base interactions with the omp connection
+    """
+
     conn = None
     readonly = False
     default_filter = {}
@@ -16,6 +20,7 @@ class OpenvasObject(object):
 
     @classmethod
     def connect(cls, **kwargs):
+        """ Initiate connection to omp """
         username = kwargs.get('username')
         password = kwargs.get('password')
         host = kwargs.get('host', '127.0.01')
@@ -27,6 +32,7 @@ class OpenvasObject(object):
 
     @classmethod
     def get_entity(cls):
+        """ Get the name of the entity """
         if not hasattr(cls, 'entity'):
             cls.entity = to_entity(cls)
         return cls.entity
@@ -41,7 +47,7 @@ class OpenvasObject(object):
             if isinstance(value, field.Field):
                 value.name = key
                 value.add_to_class(cls, key)
-        
+   
         obj = super(OpenvasObject, cls).__new__(cls)
         obj._from_base_class = type(obj) == OpenvasObject
         obj.required = getattr(cls, 'required', [])
@@ -56,16 +62,19 @@ class OpenvasObject(object):
         self.conn = connection if connection is not None else self.__class__.conn
         self.entity = to_entity(self)
         self._dirty = set()
-    
+
     def get_editable(self):
+        """ Get the names of the editable fields """
         return [f.name for f in self.fields if f.editable]
 
     @classmethod
     def from_xml(cls, xml):
+        """ Create the model from xml """
         data = oxml.xml_to_dict(xml)
         return cls.from_dict(data)
 
     def to_xml(self, is_child=False):
+        """ Convert the model to xml to be sent back to omp """
         if is_child is True:
             if self.id is None or self.id == '':
                 return None
@@ -80,16 +89,17 @@ class OpenvasObject(object):
         return elements
     
     def get_attr(self, attr):
+        """ Get the model attribute """ 
         return self._data.get(attr)
 
     @property
     def id(self):
-        """ @todo """
+        """ Get the uuid of the model """
         return self._data.get('@id')
 
     @classmethod
     def from_dict(cls, data):
-        """ @todo """
+        """ Create a new instance of a model from a dict, resetting the dirty flags """
         instance = cls(data, cls.conn)
         for attr, value in data.items():
             setattr(instance, attr, value)
@@ -99,7 +109,7 @@ class OpenvasObject(object):
 
     @classmethod
     def get(cls, query=None):
-        """ @todo """
+        """ Get instances of the model with a query """
         query = query if query is not None else cls.default_filter
         entity = to_entity(cls) 
         request = cls.conn.command('get_%ss' % entity, query)
@@ -112,11 +122,12 @@ class OpenvasObject(object):
     
     @classmethod
     def get_by_id(cls, entity_id):
-        """ @todo """
+        """ Get a new instance of an entity by a specific uuid """
         query = {'@%s_id' % to_entity(cls):entity_id}
         return next(iter(cls.get(query) or []), None)
 
     def to_dict(self, is_child=False):
+        """ Convert model to dict, usually used for copying """
         if is_child == True:
             return {'@id':self.id}
 
@@ -132,15 +143,17 @@ class OpenvasObject(object):
         return data
     
     def changed_attrs(self):
+        """ Get the names of the attributes that have changed  """
         fields = [(name, getattr(self, name)) for name in self.field_names]
         fields = set([k for (k, f) in fields if f is not None and hasattr(f, 'changed') and f.changed == True])
         return fields.union(self._dirty)
 
     def has_changed(self):
+        """ Check if the model has had any attribute changes """
         return len(self.changed_attrs()) != 0
     
     def save(self, **kwargs):
-        """ @todo """
+        """ Save the model, creating if it doesn't existing, modifying if it already does """
         if self.readonly:
             raise Exception('Cannot modify [%s] - entity is readonly' % self.entity)
         options = kwargs.copy()
@@ -150,14 +163,14 @@ class OpenvasObject(object):
         return self._create(options)
     
     def delete(self, ultimate=False):
-        """ @todo """
+        """ Delete the model, by default putting into trash, not permanent """
         return self.command('delete_' + to_entity(self), {
             '@%s_id' %  to_entity(self): self.id,
             '@ultimate': ultimate,
         })
     
     def copy(self):
-        """ @todo """
+        """ Create a new copy of the model's data """
         id_attr = '@' + to_entity(self) + 'id'
         data =  self.to_dict().copy()
         cls = type(self)
@@ -180,7 +193,7 @@ class OpenvasObject(object):
         return cls.from_dict(data)
 
     def command(self, name, details=None):
-        """ Comment here """
+        """ Run a command against omp """
         if self.conn is None:
             raise Exception('There is no connection made yet, did you connect')
             
