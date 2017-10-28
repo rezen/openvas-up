@@ -30,3 +30,14 @@ There is an example you can run in the `examples/` directory.
 
 ## Ideas
 - Automatically tag asset hosts based on scan results
+
+## Testing
+Tests are all in the `tests/` directory and are setup to use `pytest`
+
+DO NOT EVER RUN IN PRODUCTION!
+
+```
+python -m pip install -U pip
+pip install pytest mock
+python -m pytest tests/
+```
