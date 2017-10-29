@@ -22,3 +22,6 @@ class User(OpenvasObject):
     comment = field.Text()
     role = field.Object(Role)
     users = field.TextCsv()
+
+    def add_role(self, role): pass
+    def join_group(self, role): pass
