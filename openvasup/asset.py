@@ -61,6 +61,10 @@ class Asset(OpenvasObject):
         """ From a provided report, add the assets """
         pass
 
+    def get_resource_type(self):
+        """ Other resources, such as tags need correct resource type """
+        return self._data['type']
+
 
 class PortList(OpenvasObject):
     """ A configuration for what ports to scan """
