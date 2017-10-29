@@ -224,6 +224,8 @@ class OpenvasObject(object):
 
         if not request.was_successful():
             raise Exception(request.status_text())
+        
+        return request.was_successful()
  
     def _create(self, options):
         if hasattr(self, 'create') and callable(self.create):
@@ -242,6 +244,7 @@ class OpenvasObject(object):
 
         if request.was_successful():
             self._data['@id'] = request.get_id()
+            return self._data['@id']
 
 
     def _command_dict_xml(self, command, data, attrs=None):
