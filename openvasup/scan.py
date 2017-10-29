@@ -1,8 +1,10 @@
 """ Scan related models from tasks to results """
+from datetime import datetime
 from model import OpenvasObject
 from config import Config, Alert, Scanner, Schedule, Preference
 import field as field
 from asset import Target
+from secinfo import Nvt
 
 class Filter(object):
     def __init__(self, data={}): pass
@@ -21,6 +23,23 @@ class Task(OpenvasObject):
     scanner = field.Object(Scanner, editable=False)
     schedule = field.Object(Schedule)
     preference = field.Object(Preference)
+
+    def is_tagged(self):
+        """ Has the task been tagged? """
+        if 'user_tags' not in self._data:
+            # @todo make sure data has been fetched
+            return False
+        return int(self.get_attr('user_tags')['count']) > 0
+
+    def get_last_duration(self):
+        """ Get the duration of scan based on the last report """
+        if 'last_report' not in self._data:
+            return None
+
+        report = self._data['last_report']['report']
+        end = datetime.strptime(report['scan_end'], '%Y-%m-%dT%H:%M:%SZ')
+        start = datetime.strptime(report['scan_start'], '%Y-%m-%dT%H:%M:%SZ')
+        return  end - start
 
     @classmethod
     def get_by_name(cls, name):
@@ -54,25 +73,42 @@ class Task(OpenvasObject):
     def wait(self): pass
 
 
-class Report(OpenvasObject):
-    """ Specific to a task, hold the results """
-    writable = field.Text()
-    task = field.Object(Task)
-    report_format = field.Object()
-    creation_time = field.Object()
-
-    @classmethod
-    def get_host(cls, host):
-        """ Get reports for a host """
-        # @todo check if host is target or asset
-        return cls.get({'@host': host})
-
-
 class ReportFormat(OpenvasObject):
     """ Report format, such as XLS, PDF, etc """
     entity = 'report_format'
     name = field.Text().required()
     summary = field.Text()
+
+
+class Report(OpenvasObject):
+    """ Specific to a task, hold the results """
+    writable = field.Text()
+    task = field.Object(Task)
+    report_format = field.Object(ReportFormat)
+    creation_time = field.Object()
+
+    def get_extension(self):
+        """ The file extension for the report """
+        return self._data['@extension']
+
+    def is_spreadsheet(self):
+        """ Is the report a spreadsheet? """
+        return self.get_extension() in ['xls', 'csv']
+
+    def get_host(self):
+        """ Get info on the host for the report """
+        return self._data['report']['host']
+
+    def get_results(self):
+        """ Get all the report results as Result instances """
+        return [Result(result) for result in self._data['report']['results']['results']]
+
+    @classmethod
+    def get_by_host(cls, host):
+        """ Get reports for a host """
+        # @todo check if host is target or asset
+        return cls.get({'@host': host})
+
 
 class Result(OpenvasObject):
     """ Scan results """
@@ -83,6 +119,28 @@ class Result(OpenvasObject):
         """ Get the results for a specific task """
         return cls.get({'@task_id': task.id})
 
+    def add_note(self): pass
+
+    def add_overide(self): pass
+
+    def get_host(self):
+        host = self._data['host']
+        if host['asset'] is not None:
+            print(host['asset'])
+            exit()
+        return host['$text']
+
     def as_text(self):
         """ Basic text version of result """
         return "{name} {port} {threat} {severity}".format(**self._data)
+
+
+class Note(OpenvasObject):
+    """ Notes are associated with specific NVTs and generally scan results """
+    text = field.Text().required()
+    hosts = field.Text()
+    category = field.Text()
+    nvt = field.Object(Nvt)
+    tags = field.Object()
+
+class Override(OpenvasObject): pass
