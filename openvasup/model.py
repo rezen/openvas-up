@@ -4,8 +4,20 @@ from xml.etree import ElementTree as etree
 from xml.etree.ElementTree import Element
 import field
 import oxml
-from util import ObservableDict, to_entity
+from util import ObservableDict, to_entity, omp_filter_from_dict
 from omp import OmpConnection
+
+def trim_tag(obj):
+    if isinstance(obj, dict):
+        if '$tag' in obj:
+            del obj['$tag']
+        return {k: trim_tag(obj[k]) for k in obj}
+    elif isinstance(obj, list):
+        return [trim_tag(o) for o in obj]
+    return obj
+
+
+PER_PAGE = 2
 
 class OpenvasObject(object):
     """
@@ -63,6 +75,8 @@ class OpenvasObject(object):
         self.conn = connection if connection is not None else self.__class__.conn
         self.entity = to_entity(self)
         self._dirty = set()
+        self.is_creating = False
+        self.is_modifying = False
 
     def get_editable(self):
         """ Get the names of the editable fields """
@@ -82,7 +96,7 @@ class OpenvasObject(object):
             return etree.Element(self.entity, {'id': str(self.id)})
 
         data = {name: getattr(self, name) for name in self.field_names}
-        data = {k:v.to_xml(True) if hasattr(v, 'to_xml') else v for k, v in data.items() if v != None}
+        data = {k: v.to_xml(True) if hasattr(v, 'to_xml') else v for k, v in data.items() if v != None}
         elements = {k: oxml.knode(k, v) if k[0] != '@' else v for k, v in data.items() if v != None}
 
         if self.id is not None:
@@ -113,7 +127,23 @@ class OpenvasObject(object):
         """ Get instances of the model with a query """
         query = query if query is not None else cls.default_filter
         entity = to_entity(cls)
+
+        if '@filter' not in query:
+            query['@filter'] = {}
+
+        if isinstance(query['@filter'], dict):
+            query['@filter']['rows'] = PER_PAGE
+            query['@filter'] = omp_filter_from_dict(query['@filter'])
+        elif isinstance(query['@filter'], basestring):
+            query['@filter'] += " rows=%s" % PER_PAGE
+
         request = cls.conn.command('get_%ss' % entity, query)
+        # @todo add in improved paging
+        try:
+            total = request.response_xml.find("%s_count" % entity)
+            total = int(total.text)
+        except:
+            pass
 
         if hasattr(cls, 'from_xml'):
             entities = request.response_xml.findall(entity)
@@ -124,17 +154,28 @@ class OpenvasObject(object):
     @classmethod
     def get_by_id(cls, entity_id):
         """ Get a new instance of an entity by a specific uuid """
-        query = {'@%s_id' % to_entity(cls):entity_id}
+        query = {'@%s_id' % to_entity(cls): entity_id}
         return next(iter(cls.get(query) or []), None)
+
+    
+    def to_json(self):
+        data = dict(self._data)
+        for k, v in data.items():
+            if v is None:
+                continue
+            if hasattr(v, 'to_json'):
+                data[k] = v.to_json()
+        return trim_tag(data)
+
 
     def to_dict(self, is_child=False):
         """ Convert model to dict, usually used for copying """
         if is_child:
-            return {'@id':self.id}
+            return {'@id': self.id}
 
         if len(self.field_names) != 0:
-            data = {name:getattr(self, name) for name in self.field_names}
-            data = {k:v.to_dict(True)  if hasattr(v, 'to_dict') else v for k, v in data.items()}
+            data = {name: getattr(self, name) for name in self.field_names}
+            data = {k: v.to_dict(True)  if hasattr(v, 'to_dict') else v for k, v in data.items()}
         else:
             data = self._data
 
@@ -159,9 +200,14 @@ class OpenvasObject(object):
             raise Exception('Cannot modify [%s] - entity is readonly' % self.entity)
         options = kwargs.copy()
         if self.id is not None:
-            return self._modify(options)
-
-        return self._create(options)
+            self.is_modifying = True
+            value = self._modify(options)
+            self.is_modifying = False
+            return value
+        self.is_creating = True
+        value = self._create(options)
+        self.is_creating = False
+        return value
 
     def delete(self, ultimate=False):
         """ Delete the model, by default putting into trash, not permanent """
@@ -226,19 +272,21 @@ class OpenvasObject(object):
             raise Exception(request.status_text())
         
         return request.was_successful()
- 
+    
+    def validate(self, payload):
+        missing = [f for f in self.required if f not in payload]
+        # @todo need a legit validator
+        if len(missing) > 0:
+            raise Exception("Missing attributes - %s" % ','.join(missing))
+
     def _create(self, options):
         if hasattr(self, 'create') and callable(self.create):
             return self.create(options)
 
         command = 'create_%s' % to_entity(self)
         payload = self.to_xml()
-        missing = [f for f in self.required if f not in payload]
+        self.validate(payload)
         payload = self._command_dict_xml(command, payload)
-
-        # @todo need a legit validator
-        if len(missing) > 0:
-            raise Exception("Missing attributes - %s" % ','.join(missing))
 
         request = self.command(command, payload)
 
