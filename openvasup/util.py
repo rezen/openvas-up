@@ -2,6 +2,9 @@
 from __future__ import print_function
 # @todo compat for python versions
 
+def omp_filter_from_dict(data):
+    return "".join(['%s="%s"' % (k, v) for k, v in data.items()])
+
 def to_entity(obj):
     """ Get an entity name from the object """
     if hasattr(obj, 'entity'):
