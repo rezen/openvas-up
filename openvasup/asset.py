@@ -3,6 +3,7 @@ import re
 from model import OpenvasObject
 import field
 from meta import Tag
+import oxml
 
 class Target(OpenvasObject):
     """
@@ -28,21 +29,39 @@ class Target(OpenvasObject):
 
 class Asset(OpenvasObject):
     """ Assets are added by scans generally and are tracked as a host and/or os """
-    name = field.Text().required()
-    type = field.Text().required()
+    name = field.Text(editable=False).required()
+    type = field.Text(editable=False).required()
     comment = field.Text()
     user_tags = field.Object(Tag)
-    in_use = field.Text()
-    writable = field.Text()
+    in_use = field.Text(editable=False)
+    writable = field.Text(editable=False)
 
-    default_filter = {'@type':'host'}
+    default_filter = {'@type': 'host'}
     loose_ip_pattern = re.compile("^[0-9\.]+$")
+
+    def validate(self, payload):
+        # @todo
+        pass
+
+    def to_xml(self, is_child=False):
+        if self.is_creating is True:
+            data = super(Asset, self).to_xml(is_child).values()
+            xmld = oxml.xnode('asset', *data)
+            return {'asset': xmld}
+        return super(Asset, self).to_xml(is_child)
+
+    @classmethod
+    def get_by_id(cls, entity_id, asset_type='host'):
+        """ Get a new instance of an entity by a specific uuid """
+        query = {'@asset_id': entity_id, '@type': asset_type}
+        result = cls.get(query)
+        return next(iter(result or []), None)
 
     @classmethod
     def get_by_host(cls, host=None):
         """ Get assets by host, either ip form or hostname """
         if isinstance(host, list):
-            host = 'oss=%s'  % ','.join(host)
+            host = 'oss=%s' % ','.join(host)
         elif isinstance(host, str):
             if cls.loose_ip_pattern.match(host):
                 host = 'ip=%s' % host
