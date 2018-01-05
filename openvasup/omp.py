@@ -25,6 +25,9 @@ class ResultError(Error):
 class ClientError(Error):
     """ Error in how client is used """
 
+class NotFoundError(Error):
+    """ Error if result not found """
+
 """
 class OpenvasConnection:
     def __init__(self, host, port=MANAGER_PORT, username=None, password=None):
@@ -152,8 +155,8 @@ class OmpConnection:
 
         root = etree.ElementTree(data)
         root.write(self.socket, 'utf-8')
-        return  self._receive()
-    
+        return self._receive()
+
     def send_dict(self, data): pass
 
     def send_text(self, data):
@@ -207,15 +210,16 @@ class OmpConnection:
             return request.response_xml.text
 
     def command(self, name, data):
-        """ Send a command in format of command name and dicionary and convert to xml """
+        """ Send a command in format of command name and dictionary and convert to xml """
         if isinstance(data, dict):
             request = self.command_dict(name, data)
         else:
             request = self.command_xml(name, data)
 
-
         if not request.was_successful():
-            oxml.print_xml(request.data)
-            raise ResultError('Command failed [' + name + '] ' + request.get_status_text())
+            if request.get_status_code() == 404:
+                raise NotFoundError('Command failed [' + name + '] ' + request.get_status_text())
+            else:
+                raise ResultError('Command failed [' + name + '] ' + request.get_status_text())
 
         return request

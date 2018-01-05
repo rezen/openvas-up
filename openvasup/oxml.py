@@ -7,14 +7,15 @@ def knode(key, value):
     if isinstance(value, etree.Element):
         return value
 
-    if isinstance(value, str):
+    if isinstance(value, basestring):
         node = etree.Element(key)
         node.text = value
+        return node
     elif isinstance(value, dict):
         return dict_to_xml(key, value)
     elif isinstance(value, list):
         pass
-    return node
+    return None
 
 def xnode(tag, *kids, **attrs):
     """ Create an XML node ... """
@@ -69,7 +70,12 @@ def dict_to_xml(name, data):
 def print_xml(xml):
     """ Debug xml tool """
     print(xml)
-    print(etree.tostring(xml, method='xml'))
+    if not isinstance(xml, etree.Element):
+        print(etree.tostring(etree.ElementTree(xml), method='xml'))
+    else:
+        print(etree.tostring(xml, method='xml'))
+
+    print('! done-print-xml')
 
 
 def xml_to_dict(element, parent_tag=None):
