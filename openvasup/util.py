@@ -23,7 +23,7 @@ class ObservableDict(dict):
 
     def __init__(self, *args, **kwargs):
         self.changed = False
-        callback = kwargs.pop('callback')
+        callback = kwargs.pop('callback') if 'callback' in kwargs else None
         if callable(callback):
             self._callback = callback
 
@@ -40,3 +40,41 @@ class ObservableDict(dict):
     def __delitem__(self, key):
         dict.__delitem__(self, key)
         self._onchange()
+
+class ObservableList(list):
+
+    def __new__(cls, *args, **kwargs):
+        def _wrap_method(name, method):
+            def inner(self, *a, **k):
+                self._onchange()
+                return method(self, *a, **k)
+            return inner
+        
+        modifiers = [
+            '__add__',  '__delattr__',
+            '__delitem__', '__delslice__', 
+            '__rmul__', '__setitem__',
+            '__setslice__', 
+            'append',   'extend',
+            'insert', 'pop', 'remove', 'reverse', 'sort',
+        ]
+
+        for fn in modifiers:
+            method = getattr(cls, fn)
+            setattr(cls, fn, _wrap_method(fn, method))
+        return super(ObservableList, cls).__new__(cls, *args, **kwargs)
+
+
+    def __init__(self, *args, **kwargs):
+        self.changed = False
+        callback = kwargs.pop('callback') if 'callback' in kwargs else None
+        if callable(callback):
+            self._callback = callback
+
+        return super(ObservableList, self).__init__(*args, **kwargs)
+
+    def _onchange(self):
+        if hasattr(self, '_callback'):
+            self._callback()
+        self.changed = True
+    
