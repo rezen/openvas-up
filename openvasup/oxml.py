@@ -71,9 +71,9 @@ def print_xml(xml):
     """ Debug xml tool """
     print(xml)
     if not isinstance(xml, etree.Element):
-        print(etree.tostring(etree.ElementTree(xml), method='xml'))
+        print(etree.tostring(etree.ElementTree(xml), 'utf-8', method='xml'))
     else:
-        print(etree.tostring(xml, method='xml'))
+        print(etree.tostring(xml, 'utf-8', method='xml'))
 
     print('! done-print-xml')
 
