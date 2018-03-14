@@ -17,7 +17,7 @@ def trim_tag(obj):
     return obj
 
 
-PER_PAGE = 2
+PER_PAGE = 200
 
 class OpenvasObject(object):
     """
@@ -78,6 +78,14 @@ class OpenvasObject(object):
         self.is_creating = False
         self.is_modifying = False
 
+    def reload(self):
+        obj = self.__class__.get_by_id(self.id)
+        for attr in obj._data:
+            self._data[attr] = obj._data[attr]
+            setattr(self, attr, self._data[attr])
+        self._dirty = set()
+        return self
+
     def get_editable(self):
         """ Get the names of the editable fields """
         return [f.name for f in self.fields if f.editable]
@@ -103,9 +111,9 @@ class OpenvasObject(object):
             elements['@%s_id' % self.entity] = self.id
         return elements
 
-    def get_attr(self, attr):
+    def get_attr(self, attr, fallback=None):
         """ Get the model attribute """
-        return self._data.get(attr)
+        return self._data.get(attr, fallback)
 
     @property
     def id(self):
@@ -137,7 +145,9 @@ class OpenvasObject(object):
         elif isinstance(query['@filter'], basestring):
             query['@filter'] += " rows=%s" % PER_PAGE
 
-        request = cls.conn.command('get_%ss' % entity, query)
+        del query['@filter']
+        entity_plural = 'get_' + getattr(cls, 'entity_plural', '%ss' % entity)
+        request = cls.conn.command(entity_plural, query)
         # @todo add in improved paging
         try:
             total = request.response_xml.find("%s_count" % entity)
