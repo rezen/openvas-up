@@ -197,11 +197,6 @@ class Scanner(OpenvasObject):
     type = field.Text()
     ca_pub = field.Text()
 
-class Config(OpenvasObject):
-    """ For configuring details of a scan """
-    # omp?cmd=get_configs&token=39d92b71-0a5f-42a8-bc2c-dd85e98e8a46
-    comment = field.Text()
-    name = field.Text()
 
 class Schedule(OpenvasObject):
     """ Frequency and/or timing of when a scan will happen """

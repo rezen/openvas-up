@@ -1,6 +1,7 @@
 """ Quick way to start scans """
 from asset import Target
-from config import Config, Scanner, Schedule
+from secinfo import Config
+from config import Scanner, Schedule
 from scan import Task
 from meta import Tag
 
@@ -12,20 +13,24 @@ class ScanWizard(object):
         self.host = None
         self.config = None
         self.messages = []
+        self.target = None
+        self.task = None
+        self.max_scan_time = 0 # time is in minutes
 
     def start(self, options):
         """ Starts task creation process and validates options """
         self.host = options.get('host')
-        self.config = options.get('config', 'Full and fast')
+        self.config = options.get('config', 'Discovery')
 
         if self.host is None:
             raise Exception('Required a host to start scan wizard')
 
-        target = self._create_target(self.host)
-        task = self._create_task(target)
+        self.target = self._create_target(self.host)
+        self.task = self._create_task(self.target)
 
     def _create_task(self, target):
-        name = 'Scan %s' % target.hosts
+        config = [c for c in Config.get() if c.name == self.config].pop()
+        name = 'Scan %s [%s]' % (target.hosts, config.name)
         tasks = Task.get_by_name(name)
         match = None
 
@@ -38,7 +43,7 @@ class ScanWizard(object):
             self.messages.append('Stopping, existing task with same name task_id=%s' % match.id)
             return
         
-        config = [c for c in Config.get() if c.name == self.config].pop()
+        
         task = Task()
         task.name = name
         task.comment = 'Created by wizard'
@@ -52,7 +57,7 @@ class ScanWizard(object):
             pass
 
         task.start()
-        self.messages.append('Created and started task_id=%s' % task.id)
+        self.messages.append('Created and started task_id=%s name=%s' % (task.id, task.name))
         return task
 
     def _create_target(self, host):

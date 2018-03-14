@@ -1,10 +1,12 @@
 """ Scan related models from tasks to results """
 from datetime import datetime
 from model import OpenvasObject
-from config import Config, Alert, Scanner, Schedule, Preference
+from secinfo import Config
+from config import Alert, Scanner, Schedule, Preference
 import field as field
 from asset import Target
 from secinfo import Nvt
+import time
 
 class Filter(object):
     def __init__(self, data={}): pass
@@ -15,6 +17,7 @@ class Task(OpenvasObject):
     """ The Task is a task to scan, which is run against a specific Target """
     name = field.Text().required()
     comment = field.Text()
+    status = field.Text(editable=False)
     alterable = field.Text(editable=False)
     target = field.Object(Target, editable=False).required()
     config = field.Object(Config, editable=False)
@@ -57,7 +60,7 @@ class Task(OpenvasObject):
             '@task_id': self.id,
             '@slave_id': self.get_attr('slave_id'),
         })
-
+    
     def resume(self):
         """ Resume a stopped/paused task """
         return self.command('resume_task', {'@task_id': self.id})
@@ -70,7 +73,15 @@ class Task(OpenvasObject):
         """ Stop a running task """
         return self.command('stop_task', {'@task_id': self.id})
 
-    def wait(self): pass
+    def is_active(self):
+        return not (self.status == 'Stopped' or self.status == 'Done')
+
+    def wait_to_complete(self, interval=60, max_time=60):
+        """ Interval is in seconds and max_time is in minutes """
+        while self.is_active():
+            time.sleep(interval)
+            self.reload()
+        return self
 
 
 class ReportFormat(OpenvasObject):
@@ -113,6 +124,7 @@ class Report(OpenvasObject):
 class Result(OpenvasObject):
     """ Scan results """
     readonly = True
+    host = field.Text()
 
     @classmethod
     def get_for_task(cls, task):
@@ -132,7 +144,18 @@ class Result(OpenvasObject):
 
     def as_text(self):
         """ Basic text version of result """
-        return "{name} {port} {threat} {severity}".format(**self._data)
+        data = {
+            'name': self._data.get('name'),
+            'host' : self.get_host(),
+            'port': self._data.get('port'),
+            'threat':self._data.get('threat'),
+            'severity':self._data.get('severity'),
+        }
+        
+        if data['name'] is None:
+            data['name'] =  self._data.get('nvt')['name']
+        
+        return "{name} | {host} | {port} | {threat} | {severity}".format(**data)
 
 
 class Note(OpenvasObject):

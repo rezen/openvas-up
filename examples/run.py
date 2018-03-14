@@ -3,6 +3,7 @@ import pprint
 import sys
 sys.path.insert(0, '..')
 from openvasup.model import OpenvasObject
+from openvasup.scan import Result
 from openvasup.wizard import ScanWizard
 
 # Start openvas with Docker to get things doing quick!
@@ -18,5 +19,16 @@ def main():
 
   for message in wizard.messages:
     print('[i] %s' % message)
+
+  try:
+    wizard.task.wait_to_complete()
+  except:
+    pass
+
+  results = Result.get_for_task(wizard.task)
+
+  print("name | host | port | threat | severity")
+  for result in results:
+    print(result.as_text())
 
 main()
