@@ -161,7 +161,7 @@ class OmpConnection:
 
     def send_text(self, data):
         """ Send raw text to connection """
-        if not isinstance(data, unicode):
+        if not isinstance(data, basestring):
             raise ClientError('Not text ...')
 
         data = data.encode('utf-8')
@@ -172,6 +172,7 @@ class OmpConnection:
         BLOCK_SIZE = 1024
         parser = XMLParser()
         body = ""
+        root = None
         while 1:
             res = self.socket.recv(BLOCK_SIZE)
             parser.feed(res)
@@ -194,7 +195,8 @@ class OmpConnection:
         """ Send a command name with params stored in dict """
         request = Request(name, data)
         xmld = oxml.dict_to_xml(name, data)
-        request.set_response(self.send_xml(xmld))
+        response = self.send_xml(xmld)
+        request.set_response(response)
         return request
 
     def command_xml(self, name, data):
