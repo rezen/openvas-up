@@ -146,6 +146,12 @@ class Nvt(OpenvasObject):
         })
 
     @classmethod
+    def get_families(cls):
+        request = cls.conn.command('get_nvt_families', {})
+        xml = request.response_xml
+        return [f for f in xml.findall('families/family')]
+
+    @classmethod
     def get_by_config(cls, config_id):
         """ The omp protocol appears to be broken """
         request = cls.conn.command('get_nvt_families', {})
@@ -221,8 +227,8 @@ class Config(OpenvasObject):
     def is_global(self):
         return self.get_attr('owner') == None and len(self.permissions) == 0
 
-    def update_selection(self, selection):
-        if not selection.has_changed():
+    def update_selection(self, selection, force=False):
+        if not selection.has_changed() and force == False:
             return
 
         node = etree.Element('modify_config')
@@ -236,15 +242,15 @@ class Config(OpenvasObject):
         node.append(preference.to_xml())
         request = self.command('modify_config', node)
 
-    def modify(self):
+    def modify(self, force=False):
         if self.get_attr('in_use') == '1':
             raise Exception("You cannot modify a scan config already in use")
 
         for selection in self.get_attr('selections'):
-            self.update_selection(selection)
+            self.update_selection(selection, force)
         
         preferences = self.get_attr('preferences')
-        if preferences.changed == True:
+        if preferences.changed == True or force == True:
             [self.update_preference(p) for p in preferences]
         
 
@@ -272,10 +278,8 @@ class Config(OpenvasObject):
         if "201" not in body:
             raise Exception(body)
         
-        return cls.from_dict({
-            '@id': xml.find('config').attrib.get('id'),
-            'name': xml.find('config/name').text
-        })
+        id = xml.find('config').attrib.get('id')
+        return cls.get_by_id(id)
 
     @classmethod
     def from_xml_preferences(cls, xml):
