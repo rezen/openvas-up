@@ -1,0 +1,30 @@
+---
+name: 'ABC - Full and very deep ultimate - Linux'
+comment: ''
+families:
+  - family: 'Amazon Linux Local Security Checks'
+    nvts: 
+
+  - family: 'Brute force attacks'
+    nvts: 
+      - '1.3.6.1.4.1.25623.1.0.801523'
+      - '1.3.6.1.4.1.25623.1.0.80104'
+
+  - family: 'Buffer overflow'
+    all: true
+
+
+preferences:
+  - name: 'Mark unrechable Hosts as dead (not scanning)'
+    value: 'yes'
+    oid: '1.3.6.1.4.1.25623.1.0.100315'
+
+  - name: 'optimize_test'
+    value: 'no'
+
+  - name: 'safe_checks'
+    value: 'no'
+
+tags:
+  - name: 'cloned_from'
+    value: 'Full and very deep ultimate'
