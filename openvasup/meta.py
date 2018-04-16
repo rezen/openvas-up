@@ -1,5 +1,6 @@
 """ Note, annotation related models """
 from model import OpenvasObject
+from util import omp_filter_from_dict
 import field
 
 class Tag(OpenvasObject):
@@ -16,9 +17,13 @@ class Tag(OpenvasObject):
             # The tag has an id ... so it exists?
             return
 
-        uuid = self.resource['@id']
-        # @todo improve for tags that are not associated with specific resources
-        filter_string = 'resource_uuid=%s and name=%s and value=%s' % (uuid, self.name, self.value)
+        uuid = None if  self.resource is None else self.resource['@id']
+        
+        filter_string = omp_filter_from_dict({
+            'resource_uuid': uuid,
+            'name': self.name,
+            'value': self.value,
+        })
         tags = Tag.get({'@filter': filter_string})
 
         if len(tags) > 0:
@@ -26,18 +31,20 @@ class Tag(OpenvasObject):
 
         return self.save()
 
-    @staticmethod
-    def attach(obj):
-        """ Add tag to an object """
-        tag = Tag({'@id': None})
-
+    def attach(self, obj):
         if hasattr(obj, 'get_resource_type'):
             entity = obj.get_resource_type()
         else:
             entity = obj.entity
 
-        tag.resource = {
+        self.resource = {
             '@id': obj.id,
             'type': entity
         }
-        return tag
+        return self
+
+    @classmethod
+    def create_with_attach(cls, obj):
+        """ Add tag to an object """
+        tag = cls({'@id': None})
+        return tag.attach(obj)

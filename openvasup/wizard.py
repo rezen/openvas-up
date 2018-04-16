@@ -82,7 +82,7 @@ class ScanWizard(object):
         return target
 
     def _tag_obj(self, obj):
-        tag = Tag.attach(obj)
+        tag = Tag.create_with_attach(obj)
         tag.name = 'FromWizard'
         tag.value = '1'
         tag.save()

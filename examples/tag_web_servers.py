@@ -27,7 +27,7 @@ def main():
         if asset is None:
             continue
 
-        tag = Tag.attach(asset)
+        tag = Tag.create_with_attach(asset)
         tag.name = 'Services'
         tag.value = 'WebServer'
         success = tag.create_if_new()

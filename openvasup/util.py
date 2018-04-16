@@ -3,7 +3,7 @@ from __future__ import print_function
 # @todo compat for python versions
 
 def omp_filter_from_dict(data):
-    return "".join(['%s="%s"' % (k, v) for k, v in data.items()])
+    return " ".join(['%s="%s"' % (k, v) for k, v in data.items() if v is not None])
 
 def to_entity(obj):
     """ Get an entity name from the object """
