@@ -113,7 +113,7 @@ class Report(OpenvasObject):
 
     def get_results(self):
         """ Get all the report results as Result instances """
-        results = self._data['report'].get('results', {})
+        results = self._data['report'].get('results', {}) or {}
         results = [Result(result) for result in results.get('results', [])]
         return sorted(results, key=lambda k: k.severity, reverse=True)
 
