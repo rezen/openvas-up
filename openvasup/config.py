@@ -26,7 +26,6 @@ class AlertCondition(object):
     def from_xml(cls, xml):
         """ Create instance from xml """
         data = {'event':xml.text}
-
         if data['event'] == 'Always':
             pass
         else:
@@ -86,14 +85,15 @@ class AlertMethod(object):
         return cls(**data)
 
 
+
 class AlertEvent(object):
     """ Event that triggers an alert """
-    events = [
-        'Task run status changed',
-        'New SecInfo arrived',
-        'Updated SecInfo arrived',
-        'Internal Error'
-    ]
+    events = {
+        'TASK_CHANGED': 'Task run status changed',
+        'NEW_SECINFO': 'New SecInfo arrived',
+        'UPDATED_SECINFO': 'Updated SecInfo arrived',
+        'ERROR':'Internal Error',
+    }
 
     options = [
         # status
@@ -140,7 +140,9 @@ class AlertEvent(object):
     @staticmethod
     def is_valid_event(event):
         """ Is the event a valid event name """
-        return event in  AlertEvent.events
+        if event in AlertEvent.events:
+            return True
+        return event in AlertEvent.events.values()
 
     @staticmethod
     def is_valid_value(value):
@@ -154,6 +156,8 @@ class AlertEvent(object):
         data['name'] = xml.find('data/name').text
         data['value'] = xml.find('data/name').tail
         return cls(**data)
+
+[setattr(AlertEvent, k, v) for k,v in AlertEvent.events.iteritems()]
 
 
 class Alert(OpenvasObject):
