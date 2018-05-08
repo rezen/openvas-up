@@ -12,7 +12,7 @@ def main():
   pp = pprint.PrettyPrinter(indent=2)
   username ='admin'
   password ='admin'
-  OpenvasObject.connect(username=username, password=password)
+  OpenvasObject.connect(host='172.17.0.4', username=username, password=password)
 
   wizard = ScanWizard()
   wizard.start({'host': '127.0.0.1'})
@@ -20,12 +20,11 @@ def main():
   for message in wizard.messages:
     print('[i] %s' % message)
 
-  try:
-    wizard.task.wait_to_complete()
-  except:
-    pass
 
-  results = Result.get_for_task(wizard.task)
+  wizard.wait_for_tasks()
+
+
+  results = wizard.results()
 
   print("name | host | port | threat | severity")
   for result in results:

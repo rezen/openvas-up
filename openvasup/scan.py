@@ -76,8 +76,9 @@ class Task(OpenvasObject):
     def is_active(self):
         return not (self.status == 'Stopped' or self.status == 'Done')
 
-    def wait_to_complete(self, interval=60, max_time=60):
+    def wait_to_complete(self, max_time=60, interval=60):
         """ Interval is in seconds and max_time is in minutes """
+        self.reload()
         while self.is_active():
             time.sleep(interval)
             self.reload()
@@ -112,24 +113,36 @@ class Report(OpenvasObject):
 
     def get_results(self):
         """ Get all the report results as Result instances """
-        return [Result(result) for result in self._data['report']['results']['results']]
+        results = self._data['report'].get('results', {})
+        results = [Result(result) for result in results.get('results', [])]
+        return sorted(results, key=lambda k: k.severity, reverse=True)
 
     @classmethod
     def get_by_host(cls, host):
         """ Get reports for a host """
         # @todo check if host is target or asset
-        return cls.get({'@host': host})
+        return cls.get({'@host': host, '@ignore_pagination': '1'})
 
 
 class Result(OpenvasObject):
     """ Scan results """
     readonly = True
     host = field.Text()
+    severity = field.Integer()
+
 
     @classmethod
     def get_for_task(cls, task):
         """ Get the results for a specific task """
         return cls.get({'@task_id': task.id})
+
+    @property
+    def nvt_id(self):
+        return self._data.get('nvt', {}).get('@oid', '')
+
+    @property
+    def qod(self):
+        return self._data.get('qod', {}).get('value', '')
 
     def add_note(self): pass
 
@@ -148,14 +161,16 @@ class Result(OpenvasObject):
             'name': self._data.get('name'),
             'host' : self.get_host(),
             'port': self._data.get('port'),
-            'threat':self._data.get('threat'),
-            'severity':self._data.get('severity'),
+            'threat': self._data.get('threat'),
+            'severity': self._data.get('severity'),
+            'qod': self.qod,
+            'nvt_id': self.nvt_id
         }
         
         if data['name'] is None:
             data['name'] =  self._data.get('nvt')['name']
         
-        return "{name} | {host} | {port} | {threat} | {severity}".format(**data)
+        return "{name} | {host} | {port} | {threat} | {qod} | {severity} | {nvt_id}".format(**data)
 
 
 class Note(OpenvasObject):
