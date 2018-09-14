@@ -1,0 +1,37 @@
+version: '3'
+services:
+  openvas:
+    restart: always
+    image: mikesplain/openvas
+    hostname: openvas
+    ports: 
+      - "443:443"
+      - "9390:9390"
+    volumes:
+      - "~/openvas/mgr:/var/lib/openvas/mgr/"
+      - "~/openvas/cache:/var/cache/openvas"
+    # labels:
+      # deck-chores.dump.command: sh -c "greenbone-nvt-sync; openvasmd --rebuild --progress"
+      # deck-chores.dump.interval: daily
+    # healthcheck:
+    #  test: ["CMD", "curl", "-f", "https://localhost"]
+    #  interval: 60s
+    #  timeout: 10s
+    #  retries: 5
+  openvas-scan:
+    depends_on: 
+      - openvas
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SCAN_TARGET:  "${SCAN_TARGET}"
+      SCAN_NAME:    "${SCAN_NAME}"
+      SCAN_TIMEOUT: "${SCAN_TIMEOUT:-60}"
+      SCAN_OS:      "${SCAN_OS:-linux}"
+    command: sh -c '/app/wait.py && python /app/examples/scan_wizard.py'
+  cron:
+      restart: always
+      image: funkyfuture/deck-chores
+      volumes:
+        - "/var/run/docker.sock:/var/run/docker.sock"
