@@ -86,8 +86,10 @@ class ScanWizard(object):
         targets = Target.get_by_host(host)
         target = None
     
-        if not targets:
-            target = [t for t in targets if t.name == host].pop()
+        if targets:
+            targets = [t for t in targets if t.name == host]
+            if len(targets) > 0:
+                target = targets.pop()
 
         if target is None:
             target = Target()
